@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "p5gh2GDlNUo=",
+  "success": false,
+  "projectFilePath": "C:\\VA\\source_code\\eShop\\TreasureHuntApp\\TreasureHuntApi\\TreasureHuntApi.csproj",
+  "expectedPackageFiles": [],
+  "logs": [
+    {
+      "code": "NU1008",
+      "level": "Error",
+      "message": "Projects that use central package version management should not define the version on the PackageReference items but on the PackageVersion items: Microsoft.AspNetCore.OpenApi;Swashbuckle.AspNetCore."
+    }
+  ]
+}

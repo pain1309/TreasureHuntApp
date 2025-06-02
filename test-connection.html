@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .primary { background-color: #007bff; color: white; }
+        .secondary { background-color: #6c757d; color: white; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Treasure Hunt Backend Connection Test</h1>
+    
+    <div id="status" class="status warning">
+        🔄 Testing connections...
+    </div>
+    
+    <button class="primary" onclick="testAllConnections()">Test All Connections</button>
+    <button class="secondary" onclick="testBasicEndpoint()">Test Basic Endpoint</button>
+    <button class="secondary" onclick="testSolveEndpoint()">Test Solve Endpoint</button>
+    
+    <h3>Test Results:</h3>
+    <pre id="results">Click a button to start testing...</pre>
+
+    <script>
+        const API_URLS = [
+            'https://localhost:7000/api',
+            'http://localhost:5000/api',
+            'https://localhost:5000/api',  
+            'http://localhost:7000/api'
+        ];
+
+        const log = (message) => {
+            const results = document.getElementById('results');
+            results.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            console.log(message);
+        };
+
+        const setStatus = (message, type = 'warning') => {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        };
+
+        const testUrl = async (url, endpoint = '/treasurehunt/history') => {
+            try {
+                log(`Testing: ${url}${endpoint}`);
+                const response = await fetch(`${url}${endpoint}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    const data = await response.text();
+                    log(`✅ SUCCESS: ${url} - Status: ${response.status}`);
+                    return { success: true, url, status: response.status, data };
+                } else {
+                    log(`❌ FAILED: ${url} - Status: ${response.status}`);
+                    return { success: false, url, status: response.status, error: response.statusText };
+                }
+            } catch (error) {
+                log(`❌ ERROR: ${url} - ${error.message}`);
+                return { success: false, url, error: error.message };
+            }
+        };
+
+        const testAllConnections = async () => {
+            document.getElementById('results').textContent = '';
+            setStatus('🔄 Testing all backend URLs...', 'warning');
+            
+            log('=== Backend Connection Test ===');
+            log('Testing all possible backend URLs...\n');
+            
+            let successfulConnection = null;
+            
+            for (const url of API_URLS) {
+                const result = await testUrl(url);
+                if (result.success) {
+                    successfulConnection = result;
+                    break;
+                }
+            }
+            
+            if (successfulConnection) {
+                setStatus(`✅ Connected to: ${successfulConnection.url}`, 'success');
+                log(`\n🎉 Found working backend: ${successfulConnection.url}`);
+            } else {
+                setStatus('❌ No backend connections available', 'error');
+                log('\n💥 No working backend found!');
+                log('Please ensure the backend is running:');
+                log('cd TreasureHuntApp/Backend');
+                log('dotnet run');
+            }
+        };
+
+        const testBasicEndpoint = async () => {
+            document.getElementById('results').textContent = '';
+            setStatus('🔄 Testing basic endpoint...', 'warning');
+            
+            const workingUrl = await findWorkingUrl();
+            if (workingUrl) {
+                await testUrl(workingUrl, '/treasurehunt/history');
+                setStatus('✅ Basic endpoint test completed', 'success');
+            }
+        };
+
+        const testSolveEndpoint = async () => {
+            document.getElementById('results').textContent = '';
+            setStatus('🔄 Testing solve endpoint...', 'warning');
+            
+            const workingUrl = await findWorkingUrl();
+            if (workingUrl) {
+                const testRequest = {
+                    n: 3,
+                    m: 3,
+                    p: 3,
+                    matrix: [
+                        [3, 2, 2],
+                        [2, 2, 2],
+                        [2, 2, 1]
+                    ]
+                };
+                
+                try {
+                    log(`Testing solve endpoint with sample data...`);
+                    const response = await fetch(`${workingUrl}/treasurehunt/solve`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        mode: 'cors',
+                        body: JSON.stringify(testRequest)
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        log(`✅ Solve endpoint SUCCESS!`);
+                        log(`Result: ${data.minimumFuel}`);
+                        log(`Path length: ${data.path?.length || 0}`);
+                        setStatus('✅ Solve endpoint working!', 'success');
+                    } else {
+                        log(`❌ Solve endpoint FAILED - Status: ${response.status}`);
+                        setStatus('❌ Solve endpoint failed', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ Solve endpoint ERROR: ${error.message}`);
+                    setStatus('❌ Solve endpoint error', 'error');
+                }
+            }
+        };
+
+        const findWorkingUrl = async () => {
+            for (const url of API_URLS) {
+                const result = await testUrl(url);
+                if (result.success) {
+                    return url;
+                }
+            }
+            setStatus('❌ No working backend found', 'error');
+            return null;
+        };
+
+        // Auto-test on page load
+        window.onload = () => {
+            setTimeout(testAllConnections, 500);
+        };
+    </script>
+</body>
+</html> 
